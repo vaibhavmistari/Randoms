@@ -7,161 +7,116 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { background: #0a0a0a; color: #e8e8e8; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
   ::-webkit-scrollbar { width: 0; }
-  button { font-family: inherit; cursor: pointer; border: none; background: transparent; }
+  button, input { font-family: inherit; cursor: pointer; border: none; background: transparent; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState } = React;
+const { useEffect, useRef, useState } = React;
+
+const initialMetrics = [
+  { date: '2026-01-26', weight: 75.2, bodyFat: 25.3, leanMass: 56.2, muscleMass: 31.7, bmi: 25.1, bmr: 1590 },
+  { date: '2026-02-16', weight: 74.4, bodyFat: 24.6, leanMass: 56.3, muscleMass: 31.9, bmi: 24.8, bmr: 1596 },
+  { date: '2026-03-10', weight: 73.8, bodyFat: 23.9, leanMass: 56.2, muscleMass: 32.1, bmi: 24.6, bmr: 1602 },
+  { date: '2026-04-02', weight: 73.1, bodyFat: 22.8, leanMass: 56.4, muscleMass: 32.5, bmi: 24.3, bmr: 1611 },
+];
 
 const workoutPlan = [
-  {
-    day: "Day 1 — Push",
-    tag: "Chest · Shoulders · Triceps",
-    color: "#f87171",
-    exercises: [
-      { name: "Flat Barbell Bench Press", sets: "4 × 8–10", note: "Main chest compound" },
-      { name: "Incline Dumbbell Press", sets: "3 × 10–12", note: "Upper chest focus" },
-      { name: "Overhead Press (BB or DB)", sets: "3 × 8–10", note: "Front & side delts" },
-      { name: "Lateral Raises", sets: "3 × 15–20", note: "Side delt width" },
-      { name: "Tricep Rope Pushdowns", sets: "3 × 12–15", note: "" },
-      { name: "Overhead Tricep Extension", sets: "2 × 12–15", note: "Long head emphasis" },
-    ],
-  },
-  {
-    day: "Day 2 — Pull",
-    tag: "Back · Biceps · Rear Delts",
-    color: "#60a5fa",
-    exercises: [
-      { name: "Barbell Rows / T-Bar Rows", sets: "4 × 8–10", note: "Back thickness" },
-      { name: "Lat Pulldowns", sets: "3 × 10–12", note: "Back width" },
-      { name: "Seated Cable Rows", sets: "3 × 10–12", note: "Mid-back squeeze" },
-      { name: "Face Pulls", sets: "3 × 15–20", note: "Rear delts + posture fix" },
-      { name: "Barbell / Dumbbell Curls", sets: "3 × 10–12", note: "" },
-      { name: "Hammer Curls", sets: "2 × 12–15", note: "Forearm & brachialis" },
-    ],
-  },
-  {
-    day: "Day 3 — Legs & Abs",
-    tag: "Quads · Hams · Glutes · Core",
-    color: "#34d399",
-    exercises: [
-      { name: "Barbell Squats", sets: "4 × 8–10", note: "King of all exercises" },
-      { name: "Romanian Deadlifts", sets: "3 × 10–12", note: "Hamstrings & glutes" },
-      { name: "Leg Press", sets: "3 × 12–15", note: "Quad volume" },
-      { name: "Walking Lunges", sets: "3 × 12 each", note: "Stability + glutes" },
-      { name: "Calf Raises (Standing)", sets: "4 × 15–20", note: "Full ROM" },
-      { name: "Hanging Leg Raises", sets: "3 × 12–15", note: "Lower abs" },
-      { name: "Cable Crunches", sets: "3 × 15", note: "Upper abs" },
-    ],
-  },
-  {
-    day: "Day 4 — Push (V2)",
-    tag: "Incline Focus · Cables · Dips",
-    color: "#fb923c",
-    exercises: [
-      { name: "Incline Barbell Press", sets: "4 × 8–10", note: "Upper chest priority" },
-      { name: "Flat Dumbbell Press", sets: "3 × 10–12", note: "Chest stretch" },
-      { name: "Dumbbell Shoulder Press", sets: "3 × 10–12", note: "" },
-      { name: "Cable Flyes (Low to High)", sets: "3 × 12–15", note: "Chest finishing" },
-      { name: "Lateral Raises (Cable)", sets: "3 × 15–20", note: "" },
-      { name: "Close-Grip Bench or Dips", sets: "3 × 10–12", note: "Tricep mass" },
-    ],
-  },
-  {
-    day: "Day 5 — Pull + Legs",
-    tag: "Deadlift · Pull-Ups · Isolation",
-    color: "#a78bfa",
-    exercises: [
-      { name: "Deadlifts (Conventional)", sets: "4 × 5–6", note: "Heavy compound" },
-      { name: "Pull-Ups or Chin-Ups", sets: "3 × max", note: "Bodyweight mastery" },
-      { name: "Single Arm DB Row", sets: "3 × 10–12", note: "Lat isolation" },
-      { name: "Leg Curls", sets: "3 × 12–15", note: "Hamstring isolation" },
-      { name: "Leg Extensions", sets: "3 × 12–15", note: "Quad isolation" },
-      { name: "Plank Hold", sets: "3 × 45–60s", note: "Core stability" },
-      { name: "Bicycle Crunches", sets: "3 × 20", note: "Obliques" },
-    ],
-  },
-  {
-    day: "Day 6 — Visceral Fat Cardio",
-    tag: "Dr. Kim Protocol · Cycling / HIIT",
-    color: "#fb923c",
-    exercises: [
-      { name: "Stationary Bike / Cycling", sets: "45 min", note: "Moderate — targets visceral fat even when scale doesn't move" },
-      { name: "OR: HIIT Session", sets: "25 min", note: "30s sprint / 60s rest × 10 — 70–80% max HR (~140–155 BPM)" },
-      { name: "Walk 10,000 steps", sets: "All day", note: "Critical for desk workers" },
-      { name: "Stretching / Yoga", sets: "15 min", note: "Recovery + flexibility" },
-    ],
-  },
-  {
-    day: "Day 7 — Full Rest",
-    tag: "Recovery · Walk · Foam Roll",
-    color: "#666",
-    exercises: [
-      { name: "Walk 8,000–10,000 steps", sets: "All day", note: "Don't sit all day on rest day" },
-      { name: "Foam Rolling", sets: "15 min", note: "Quads, hamstrings, upper back" },
-      { name: "Light Stretching", sets: "20 min", note: "Active recovery" },
-    ],
-  },
+  { day: "Day 1 — Push", tag: "Chest · Shoulders · Triceps", color: "#f87171", exercises: [
+    { name: "Flat Barbell Bench Press", sets: "4 × 8–10", note: "Main chest compound" },
+    { name: "Incline Dumbbell Press", sets: "3 × 10–12", note: "Upper chest focus" },
+    { name: "Overhead Press (BB or DB)", sets: "3 × 8–10", note: "Front & side delts" },
+    { name: "Lateral Raises", sets: "3 × 15–20", note: "Side delt width" },
+    { name: "Tricep Rope Pushdowns", sets: "3 × 12–15", note: "" },
+    { name: "Overhead Tricep Extension", sets: "2 × 12–15", note: "Long head emphasis" },
+  ]},
+  { day: "Day 2 — Pull", tag: "Back · Biceps · Rear Delts", color: "#60a5fa", exercises: [
+    { name: "Barbell Rows / T-Bar Rows", sets: "4 × 8–10", note: "Back thickness" },
+    { name: "Lat Pulldowns", sets: "3 × 10–12", note: "Back width" },
+    { name: "Seated Cable Rows", sets: "3 × 10–12", note: "Mid-back squeeze" },
+    { name: "Face Pulls", sets: "3 × 15–20", note: "Rear delts + posture fix" },
+    { name: "Barbell / Dumbbell Curls", sets: "3 × 10–12", note: "" },
+    { name: "Hammer Curls", sets: "2 × 12–15", note: "Forearm & brachialis" },
+  ]},
+  { day: "Day 3 — Legs & Abs", tag: "Quads · Hams · Glutes · Core", color: "#34d399", exercises: [
+    { name: "Barbell Squats", sets: "4 × 8–10", note: "King of all exercises" },
+    { name: "Romanian Deadlifts", sets: "3 × 10–12", note: "Hamstrings & glutes" },
+    { name: "Leg Press", sets: "3 × 12–15", note: "Quad volume" },
+    { name: "Walking Lunges", sets: "3 × 12 each", note: "Stability + glutes" },
+    { name: "Calf Raises (Standing)", sets: "4 × 15–20", note: "Full ROM" },
+    { name: "Hanging Leg Raises", sets: "3 × 12–15", note: "Lower abs" },
+    { name: "Cable Crunches", sets: "3 × 15", note: "Upper abs" },
+  ]},
+  { day: "Day 4 — Push (V2)", tag: "Incline Focus · Cables · Dips", color: "#fb923c", exercises: [
+    { name: "Incline Barbell Press", sets: "4 × 8–10", note: "Upper chest priority" },
+    { name: "Flat Dumbbell Press", sets: "3 × 10–12", note: "Chest stretch" },
+    { name: "Dumbbell Shoulder Press", sets: "3 × 10–12", note: "" },
+    { name: "Cable Flyes (Low to High)", sets: "3 × 12–15", note: "Chest finishing" },
+    { name: "Lateral Raises (Cable)", sets: "3 × 15–20", note: "" },
+    { name: "Close-Grip Bench or Dips", sets: "3 × 10–12", note: "Tricep mass" },
+  ]},
+  { day: "Day 5 — Pull + Legs", tag: "Deadlift · Pull-Ups · Isolation", color: "#a78bfa", exercises: [
+    { name: "Deadlifts (Conventional)", sets: "4 × 5–6", note: "Heavy compound" },
+    { name: "Pull-Ups or Chin-Ups", sets: "3 × max", note: "Bodyweight mastery" },
+    { name: "Single Arm DB Row", sets: "3 × 10–12", note: "Lat isolation" },
+    { name: "Leg Curls", sets: "3 × 12–15", note: "Hamstring isolation" },
+    { name: "Leg Extensions", sets: "3 × 12–15", note: "Quad isolation" },
+    { name: "Plank Hold", sets: "3 × 45–60s", note: "Core stability" },
+    { name: "Bicycle Crunches", sets: "3 × 20", note: "Obliques" },
+  ]},
+  { day: "Day 6 — Visceral Fat Cardio", tag: "Dr. Kim Protocol · Cycling / HIIT", color: "#fb923c", exercises: [
+    { name: "Stationary Bike / Cycling", sets: "45 min", note: "Moderate — targets visceral fat even when scale doesn't move" },
+    { name: "OR: HIIT Session", sets: "25 min", note: "30s sprint / 60s rest × 10 — 70–80% max HR (~140–155 BPM)" },
+    { name: "Walk 10,000 steps", sets: "All day", note: "Critical for desk workers" },
+    { name: "Stretching / Yoga", sets: "15 min", note: "Recovery + flexibility" },
+  ]},
+  { day: "Day 7 — Full Rest", tag: "Recovery · Walk · Foam Roll", color: "#666", exercises: [
+    { name: "Walk 8,000–10,000 steps", sets: "All day", note: "Don't sit all day on rest day" },
+    { name: "Foam Rolling", sets: "15 min", note: "Quads, hamstrings, upper back" },
+    { name: "Light Stretching", sets: "20 min", note: "Active recovery" },
+  ]},
 ];
 
 const mealSlots = [
-  {
-    slot: "Pre-Workout — 6:40 AM",
-    macro: "~200 kcal | 5P | 30C | 8F",
-    options: [
-      { label: "Indian", items: ["1 banana + 10 almonds", "1 cup green tea (matcha/sencha)"], note: "Simple, no cooking needed" },
-      { label: "Western", items: ["1 slice whole grain toast + 1 tbsp peanut butter", "1 cup green tea"], note: "Slow-release energy from complex carbs" },
-      { label: "Asian", items: ["1 small rice cake + 1 tbsp almond butter", "1 cup matcha latte (no sugar)"], note: "Light and easy on the stomach" },
-      { label: "Smoothie", items: ["½ banana + 1 tbsp oats + 100ml water — blended", "1 cup green tea on the side"], note: "Fastest — drink on the way to gym" },
-    ],
-  },
-  {
-    slot: "Meal 1 (Post-Workout) — 8:30 AM",
-    macro: "~500 kcal | 35P | 45C | 18F",
-    options: [
-      { label: "Indian", items: ["3 whole eggs + 2 whites — bhurji style", "2 wheat roti", "1 bowl palak/gajar sabzi", "1 glass chaas (buttermilk)"], note: "Classic desi post-workout" },
-      { label: "Western", items: ["3-egg omelette w/ bell peppers & spinach", "2 slices whole wheat toast", "½ avocado", "Black coffee"], note: "High-fat, very satiating" },
-      { label: "Asian", items: ["150g grilled chicken strips", "1 cup steamed jasmine rice", "Stir-fried broccoli & carrots with soy sauce", "Miso soup (packet is fine)"], note: "Clean, lean, high volume" },
-      { label: "Quick", items: ["40g oats cooked with 150ml milk", "1.5 scoops whey protein stirred in after cooking", "20g almonds + 1 sliced banana on top"], note: "No real cooking — microwave oats + mix" },
-    ],
-  },
-  {
-    slot: "Meal 2 (Lunch) — 1:00 PM",
-    macro: "~600 kcal | 45P | 55C | 15F",
-    options: [
-      { label: "Indian", items: ["150g chicken sabzi OR 200g paneer bhurji", "1 cup rice OR 2 roti", "1 cup moong/masoor dal", "Salad: carrot, bell pepper, cucumber, tomato", "100g curd/dahi"], note: "Biggest meal — protein + complex carbs" },
-      { label: "Western", items: ["200g grilled chicken thigh (skin removed)", "150g roasted potato cubes (air-fried)", "Large mixed green salad w/ olive oil dressing", "1 whole wheat dinner roll"], note: "Mediterranean-inspired, very filling" },
-      { label: "Asian", items: ["200g teriyaki chicken (soy + honey + garlic sauce)", "1 cup brown rice", "Stir-fried bok choy, snap peas & carrots", "50g shelled edamame"], note: "Umami-packed, high protein, satisfying" },
-      { label: "Tex-Mex", items: ["Burrito bowl: 150g chicken, ½ cup rice, ½ cup black beans", "Pico de gallo, lettuce, 30g shredded cheese", "Squeeze of lime + hot sauce", "Side of carrot sticks"], note: "Chipotle-style — ~45g protein in one bowl" },
-    ],
-  },
-  {
-    slot: "Meal 3 (Snack) — 5:00 PM",
-    macro: "~250 kcal | 35P | 15C | 5F",
-    options: [
-      { label: "Indian", items: ["100g roasted chana", "1 banana", "1 cup green tea (2nd cup — hits 600mg catechins)"], note: "Crunchy, filling, cheap" },
-      { label: "Shake", items: ["1.5 scoops whey in water or 150ml milk", "1 cup green tea on the side"], note: "Fastest protein hit — under 2 minutes" },
-      { label: "Greek", items: ["200g Greek yogurt or hung curd", "Drizzle of honey + 10 walnuts", "1 cup green tea"], note: "Probiotics + protein + omega-3s" },
-      { label: "Savory", items: ["2 boiled eggs + salt & pepper", "1 small apple or pear", "1 cup green tea"], note: "Zero prep if eggs are pre-boiled" },
-    ],
-  },
-  {
-    slot: "Meal 4 (Dinner) — 8:00 PM",
-    macro: "~500 kcal | 40P | 40C | 15F",
-    options: [
-      { label: "Indian", items: ["150g chicken / paneer / soya chunks", "2 homemade wheat roti (NOT frozen)", "1 bowl sabzi: palak, gajar-matar, or tori", "Salad w/ carrots & bell peppers"], note: "Carotenoid-rich sabzi fights visceral fat" },
-      { label: "Western", items: ["180g baked salmon or grilled chicken breast", "150g roasted veggies (broccoli, zucchini, bell peppers)", "1 medium baked potato", "Side salad w/ lemon dressing"], note: "Salmon omega-3s boost fat metabolism" },
-      { label: "Asian", items: ["150g minced chicken lettuce wraps", "Filling: water chestnuts, carrots, soy, ginger", "1 cup egg drop soup", "½ cup steamed rice"], note: "Light, refreshing, high protein" },
-      { label: "Italian", items: ["150g grilled chicken breast", "100g whole wheat pasta w/ garlic & olive oil", "Sautéed spinach & cherry tomatoes", "Sprinkle of parmesan"], note: "Comfort food that fits macros — control the pasta" },
-    ],
-  },
+  { slot: "Pre-Workout — 6:40 AM", macro: "~200 kcal | 5P | 30C | 8F", options: [
+    { label: "Indian", items: ["1 banana + 10 almonds", "1 cup green tea (matcha/sencha)"], note: "Simple, no cooking needed" },
+    { label: "Western", items: ["1 slice whole grain toast + 1 tbsp peanut butter", "1 cup green tea"], note: "Slow-release energy from complex carbs" },
+    { label: "Asian", items: ["1 small rice cake + 1 tbsp almond butter", "1 cup matcha latte (no sugar)"], note: "Light and easy on the stomach" },
+    { label: "Smoothie", items: ["½ banana + 1 tbsp oats + 100ml water — blended", "1 cup green tea on the side"], note: "Fastest — drink on the way to gym" },
+  ]},
+  { slot: "Meal 1 (Post-Workout) — 8:30 AM", macro: "~500 kcal | 35P | 45C | 18F", options: [
+    { label: "Indian", items: ["3 whole eggs + 2 whites — bhurji style", "2 wheat roti", "1 bowl palak/gajar sabzi", "1 glass chaas (buttermilk)"], note: "Classic desi post-workout" },
+    { label: "Western", items: ["3-egg omelette w/ bell peppers & spinach", "2 slices whole wheat toast", "½ avocado", "Black coffee"], note: "High-fat, very satiating" },
+    { label: "Asian", items: ["150g grilled chicken strips", "1 cup steamed jasmine rice", "Stir-fried broccoli & carrots with soy sauce", "Miso soup (packet is fine)"], note: "Clean, lean, high volume" },
+    { label: "Quick", items: ["40g oats cooked with 150ml milk", "1.5 scoops whey protein stirred in after cooking", "20g almonds + 1 sliced banana on top"], note: "No real cooking — microwave oats + mix" },
+  ]},
+  { slot: "Meal 2 (Lunch) — 1:00 PM", macro: "~600 kcal | 45P | 55C | 15F", options: [
+    { label: "Indian", items: ["150g chicken sabzi OR 200g paneer bhurji", "1 cup rice OR 2 roti", "1 cup moong/masoor dal", "Salad: carrot, bell pepper, cucumber, tomato", "100g curd/dahi"], note: "Biggest meal — protein + complex carbs" },
+    { label: "Western", items: ["200g grilled chicken thigh (skin removed)", "150g roasted potato cubes (air-fried)", "Large mixed green salad w/ olive oil dressing", "1 whole wheat dinner roll"], note: "Mediterranean-inspired, very filling" },
+    { label: "Asian", items: ["200g teriyaki chicken (soy + honey + garlic sauce)", "1 cup brown rice", "Stir-fried bok choy, snap peas & carrots", "50g shelled edamame"], note: "Umami-packed, high protein, satisfying" },
+    { label: "Tex-Mex", items: ["Burrito bowl: 150g chicken, ½ cup rice, ½ cup black beans", "Pico de gallo, lettuce, 30g shredded cheese", "Squeeze of lime + hot sauce", "Side of carrot sticks"], note: "Chipotle-style — ~45g protein in one bowl" },
+  ]},
+  { slot: "Meal 3 (Snack) — 5:00 PM", macro: "~250 kcal | 35P | 15C | 5F", options: [
+    { label: "Indian", items: ["100g roasted chana", "1 banana", "1 cup green tea (2nd cup — hits 600mg catechins)"], note: "Crunchy, filling, cheap" },
+    { label: "Shake", items: ["1.5 scoops whey in water or 150ml milk", "1 cup green tea on the side"], note: "Fastest protein hit — under 2 minutes" },
+    { label: "Greek", items: ["200g Greek yogurt or hung curd", "Drizzle of honey + 10 walnuts", "1 cup green tea"], note: "Probiotics + protein + omega-3s" },
+    { label: "Savory", items: ["2 boiled eggs + salt & pepper", "1 small apple or pear", "1 cup green tea"], note: "Zero prep if eggs are pre-boiled" },
+  ]},
+  { slot: "Meal 4 (Dinner) — 8:00 PM", macro: "~500 kcal | 40P | 40C | 15F", options: [
+    { label: "Indian", items: ["150g chicken / paneer / soya chunks", "2 homemade wheat roti (NOT frozen)", "1 bowl sabzi: palak, gajar-matar, or tori", "Salad w/ carrots & bell peppers"], note: "Carotenoid-rich sabzi fights visceral fat" },
+    { label: "Western", items: ["180g baked salmon or grilled chicken breast", "150g roasted veggies (broccoli, zucchini, bell peppers)", "1 medium baked potato", "Side salad w/ lemon dressing"], note: "Salmon omega-3s boost fat metabolism" },
+    { label: "Asian", items: ["150g minced chicken lettuce wraps", "Filling: water chestnuts, carrots, soy, ginger", "1 cup egg drop soup", "½ cup steamed rice"], note: "Light, refreshing, high protein" },
+    { label: "Italian", items: ["150g grilled chicken breast", "100g whole wheat pasta w/ garlic & olive oil", "Sautéed spinach & cherry tomatoes", "Sprinkle of parmesan"], note: "Comfort food that fits macros — control the pasta" },
+  ]},
 ];
 
 const schedule = [
@@ -181,9 +136,53 @@ const schedule = [
   { time: "10:00 PM", act: "Lights out — Sleep (8.5 hrs)", icon: "🌙" },
 ];
 
-/* ──────── COMPONENTS ──────── */
+const metricMeta = [
+  { key: 'weight', label: 'Weight', suffix: ' kg', sub: (v) => `${(v * 2.20462).toFixed(1)} lbs`, color: '#f87171', lowerBetter: true },
+  { key: 'bodyFat', label: 'Body Fat', suffix: '%', sub: (v, row) => `${((row.weight * v) / 100).toFixed(1)} kg fat mass`, color: '#fb923c', lowerBetter: true },
+  { key: 'leanMass', label: 'Lean Mass', suffix: ' kg', sub: (v) => `${(v * 2.20462).toFixed(1)} lbs`, color: '#34d399', lowerBetter: false },
+  { key: 'muscleMass', label: 'Muscle Mass', suffix: ' kg', sub: (v, row) => `${((v / row.weight) * 100).toFixed(1)}% of body`, color: '#60a5fa', lowerBetter: false },
+  { key: 'bmi', label: 'BMI', suffix: '', sub: (v) => v < 25 ? 'Healthy range' : 'Slightly overweight', color: '#fbbf24', lowerBetter: true },
+  { key: 'bmr', label: 'BMR', suffix: '', sub: (v) => `${Math.round(v).toLocaleString()} kcal/day at rest`, color: '#a78bfa', lowerBetter: false },
+];
+
+function fmtDate(dateString) {
+  return new Date(dateString + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function fmtFullDate(dateString) {
+  return new Date(dateString + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+function weekIndex(dateString, baseDateString) {
+  const oneDay = 24 * 60 * 60 * 1000;
+  const current = new Date(dateString + 'T12:00:00');
+  const base = new Date(baseDateString + 'T12:00:00');
+  return Math.round((current - base) / (7 * oneDay));
+}
+function monthTickLabel(index, points) {
+  const match = points.find((point) => point.x === index);
+  if (!match) return '';
+  const date = new Date(match.date + 'T12:00:00');
+  return date.toLocaleDateString(undefined, { month: 'short' });
+}
+function formatValue(meta, value) {
+  if (meta.key === 'bmr') return Math.round(value).toLocaleString();
+  if (meta.key === 'bmi') return value.toFixed(1);
+  return `${value.toFixed(1)}${meta.suffix}`;
+}
+function percentChange(current, previous) {
+  if (!previous) return 0;
+  return ((current - previous) / previous) * 100;
+}
+function changeLabel(meta, current, previous) {
+  const pct = percentChange(current, previous);
+  const positiveGood = !meta.lowerBetter;
+  const improved = positiveGood ? pct >= 0 : pct <= 0;
+  const sign = pct > 0 ? '+' : '';
+  return { text: `${sign}${pct.toFixed(1)}% vs previous`, color: improved ? '#34d399' : '#f87171' };
+}
+
 function App() {
   const [tab, setTab] = useState(0);
+  const [metricsData, setMetricsData] = useState(initialMetrics);
   const tabs = ["Overview", "Gym", "Diet", "Schedule"];
   return (
     React.createElement("div", { style: { maxWidth: 720, margin: "0 auto", paddingBottom: 40 } },
@@ -192,7 +191,7 @@ function App() {
         React.createElement("h1", { style: { fontSize: 26, fontWeight: 700, margin: "0 0 4px", background: "linear-gradient(90deg,#f0f0f0,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } }, "Cut Fat. Build Muscle. Fix The Routine."),
         React.createElement("p", { style: { color: "#666", fontSize: 12, margin: 0 } }, "Body scan Jan 25–26, 2026 · Wake 6:30 AM · Sleep 10:00 PM")
       ),
-      React.createElement("div", { style: { display: "flex", background: "#0d0d0d", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #1a1a1a" } },
+      React.createElement("div", { style: { display: "flex", background: "#0d0d0d", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #1a1a1a" } },
         tabs.map((t, i) =>
           React.createElement("button", {
             key: t, onClick: () => setTab(i),
@@ -201,7 +200,7 @@ function App() {
         )
       ),
       React.createElement("div", { style: { padding: "20px 16px" } },
-        tab === 0 && React.createElement(Overview),
+        tab === 0 && React.createElement(Overview, { metricsData, setMetricsData }),
         tab === 1 && React.createElement(GymPlan),
         tab === 2 && React.createElement(DietPlan),
         tab === 3 && React.createElement(ScheduleTab)
@@ -218,16 +217,29 @@ function Crd({ bg, border, children, style }) {
   return React.createElement("div", { style: { background: bg || "#111", borderRadius: 12, padding: 16, border: "1px solid " + (border || "#1a1a1a"), marginBottom: 10, ...style } }, children);
 }
 
-/* ── OVERVIEW ── */
-function Overview() {
-  const stats = [
-    ["Weight", "75.2 kg", "166 lbs", "#f87171"],
-    ["Body Fat", "25.3%", "19 kg fat mass", "#fb923c"],
-    ["Lean Mass", "56.2 kg", "124.1 lbs", "#34d399"],
-    ["Muscle Mass", "31.7 kg", "42.2% of body", "#60a5fa"],
-    ["BMI", "25.1", "Slightly overweight", "#fbbf24"],
-    ["BMR", "1,590", "kcal/day at rest", "#a78bfa"],
-  ];
+function SubTabs({ active, setActive }) {
+  const items = ['Metrics', 'Summary'];
+  return React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 14 } },
+    items.map((item) => React.createElement('button', {
+      key: item,
+      onClick: () => setActive(item),
+      style: {
+        padding: '8px 14px',
+        borderRadius: 20,
+        background: active === item ? '#a78bfa' : '#151522',
+        color: active === item ? '#0a0a0a' : '#7f7fb2',
+        border: active === item ? '1px solid #a78bfa' : '1px solid #23233a',
+        fontSize: 12,
+        fontWeight: 600,
+        transition: 'all .2s'
+      }
+    }, item))
+  );
+}
+
+function Overview({ metricsData, setMetricsData }) {
+  const [overviewTab, setOverviewTab] = useState('Metrics');
+  const hasMetrics = metricsData.length > 0;
   const problems = [
     ["🪑", "Sedentary Lifestyle", "Sitting all day = near-zero calorie burn. NEAT is almost nothing. #1 reason belly fat accumulates even if you eat 'normal' amounts."],
     ["🍪", "Low Protein, High Carb Diet", "Chai + Parle-G = sugar crash. Potato sabzi + rice = all carbs. Frozen rotis + chicken = ~30g protein/day. You need 150g."],
@@ -241,88 +253,382 @@ function Overview() {
   ];
   const macros = [["Protein", "150g", 37, "#34d399"], ["Carbs", "150g", 37, "#60a5fa"], ["Fat", "55g", 26, "#fbbf24"]];
 
-  return React.createElement("div", null,
-    React.createElement(Sec, null, "Your Body Right Now"),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 } },
-      stats.map(([l, v, s, c], i) =>
+  return React.createElement('div', null,
+    React.createElement(SubTabs, { active: overviewTab, setActive: setOverviewTab }),
+    overviewTab === 'Metrics' && React.createElement(MetricsPanel, { metricsData, setMetricsData }),
+    overviewTab === 'Summary' && React.createElement('div', null,
+      React.createElement(Sec, null, "Your Body Right Now"),
+      hasMetrics
+        ? React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 } },
+            metricMeta.map((meta, i) => {
+              const current = metricsData[metricsData.length - 1];
+              return React.createElement(Crd, { key: i },
+                React.createElement("div", { style: { fontSize: 11, color: "#666" } }, meta.label),
+                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, color: meta.color } }, formatValue(meta, current[meta.key])),
+                React.createElement("div", { style: { fontSize: 11, color: "#555" } }, meta.sub(current[meta.key], current))
+              );
+            })
+          )
+        : React.createElement(Crd, { bg: '#111', border: '#1a1a1a' },
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: '#ddd', marginBottom: 6 } }, 'No body metrics yet'),
+            React.createElement("div", { style: { fontSize: 12, color: '#777', lineHeight: 1.6 } }, 'Add your first dataset in the Metrics section and it will appear here automatically.')
+          ),
+      React.createElement(Sec, null, "What's Holding You Back"),
+      problems.map(([icon, title, desc], i) =>
         React.createElement(Crd, { key: i },
-          React.createElement("div", { style: { fontSize: 11, color: "#666" } }, l),
-          React.createElement("div", { style: { fontSize: 22, fontWeight: 700, color: c } }, v),
-          React.createElement("div", { style: { fontSize: 11, color: "#555" } }, s)
-        )
-      )
-    ),
-
-    React.createElement(Sec, null, "What's Holding You Back"),
-    problems.map(([icon, title, desc], i) =>
-      React.createElement(Crd, { key: i },
-        React.createElement("div", { style: { display: "flex", gap: 12 } },
-          React.createElement("span", { style: { fontSize: 24 } }, icon),
-          React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 4 } }, title),
-            React.createElement("div", { style: { fontSize: 12, color: "#888", lineHeight: 1.5 } }, desc)
-          )
-        )
-      )
-    ),
-
-    React.createElement(Sec, null, "Visceral Fat — The Hidden Danger"),
-    React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a0a,#1a1005)", border: "#3a2010" },
-      React.createElement("p", { style: { fontSize: 14, color: "#fb923c", fontWeight: 600, marginBottom: 10 } }, "From Dr. Leonid Kim's Research"),
-      React.createElement("p", { style: { fontSize: 13, color: "#888", lineHeight: 1.6, marginBottom: 10 } },
-        "Your trunk fat is ", React.createElement("strong", { style: { color: "#fb923c" } }, "7.8 kg"),
-        " — visceral fat wraps around your liver, kidneys & intestines. Even after losing weight, it persists unless specifically targeted. Good news: it's the ", React.createElement("em", null, "easiest"), " fat to lose."
-      ),
-      visceral.map(([t, d], i) =>
-        React.createElement("p", { key: i, style: { fontSize: 12, color: "#888", marginBottom: 4 } },
-          React.createElement("span", { style: { color: "#fb923c" } }, (i + 1) + ". "),
-          React.createElement("strong", { style: { color: "#aaa" } }, t), " — " + d
-        )
-      )
-    ),
-
-    React.createElement(Sec, null, "Your Targets"),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
-      [["Target Body Fat", "15–18%"], ["Fat to Lose", "~7–8 kg"], ["Muscle to Gain", "~3–5 kg"], ["Timeline", "6–9 months"]].map(([l, v], i) =>
-        React.createElement(Crd, { key: i, bg: "#0a1a10", border: "#1a2a1a" },
-          React.createElement("div", { style: { fontSize: 11, color: "#4ade80" } }, l),
-          React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "#34d399" } }, v)
-        )
-      )
-    ),
-
-    React.createElement(Sec, null, "Daily Macro Targets"),
-    React.createElement(Crd, null,
-      React.createElement("div", { style: { textAlign: "center", marginBottom: 16 } },
-        React.createElement("span", { style: { fontSize: 32, fontWeight: 700, color: "#a78bfa" } }, "~2,000"),
-        React.createElement("span", { style: { fontSize: 14, color: "#888", marginLeft: 6 } }, "kcal / day")
-      ),
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-around" } },
-        macros.map(([l, v, p, c]) =>
-          React.createElement("div", { key: l, style: { textAlign: "center" } },
-            React.createElement("div", { style: { width: 48, height: 48, borderRadius: "50%", border: "3px solid " + c, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontSize: 11, fontWeight: 700, color: c, fontFamily: "Space Mono,monospace" } }, p + "%"),
-            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "#ddd" } }, v),
-            React.createElement("div", { style: { fontSize: 10, color: "#666" } }, l)
+          React.createElement("div", { style: { display: "flex", gap: 12 } },
+            React.createElement("span", { style: { fontSize: 24 } }, icon),
+            React.createElement("div", null,
+              React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 4 } }, title),
+              React.createElement("div", { style: { fontSize: 12, color: "#888", lineHeight: 1.5 } }, desc)
+            )
           )
         )
       ),
-      React.createElement("p", { style: { fontSize: 12, color: "#555", textAlign: "center", marginTop: 14 } }, "Moderate deficit from TDEE (~2,400 with gym). Lose ~0.5 kg/week while building muscle.")
-    ),
-
-    React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a2e,#0a1628)", border: "#2a1a4e" },
-      React.createElement("p", { style: { fontSize: 14, color: "#c4b5fd", fontWeight: 600, marginBottom: 8 } }, "The Reels You Saved Are Mostly Right"),
-      React.createElement("p", { style: { fontSize: 13, color: "#888", lineHeight: 1.6 } }, "High protein + calorie deficit + lifting + walking = proven formula. I've expanded beyond Indian staples with Western, Asian & Tex-Mex options. The sodium/water manipulation plan you saved is for short-term aesthetics — skip that and focus on real fat loss first.")
+      React.createElement(Sec, null, "Visceral Fat — The Hidden Danger"),
+      React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a0a,#1a1005)", border: "#3a2010" },
+        React.createElement("p", { style: { fontSize: 14, color: "#fb923c", fontWeight: 600, marginBottom: 10 } }, "From Dr. Leonid Kim's Research"),
+        React.createElement("p", { style: { fontSize: 13, color: "#888", lineHeight: 1.6, marginBottom: 10 } },
+          "Your trunk fat is ", React.createElement("strong", { style: { color: "#fb923c" } }, "7.8 kg"),
+          " — visceral fat wraps around your liver, kidneys & intestines. Even after losing weight, it persists unless specifically targeted. Good news: it's the ", React.createElement("em", null, "easiest"), " fat to lose."
+        ),
+        visceral.map(([t, d], i) =>
+          React.createElement("p", { key: i, style: { fontSize: 12, color: "#888", marginBottom: 4 } },
+            React.createElement("span", { style: { color: "#fb923c" } }, (i + 1) + ". "),
+            React.createElement("strong", { style: { color: "#aaa" } }, t), " — " + d
+          )
+        )
+      ),
+      React.createElement(Sec, null, "Your Targets"),
+      React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+        [["Target Body Fat", "15–18%"], ["Fat to Lose", "~7–8 kg"], ["Muscle to Gain", "~3–5 kg"], ["Timeline", "6–9 months"]].map(([l, v], i) =>
+          React.createElement(Crd, { key: i, bg: "#0a1a10", border: "#1a2a1a" },
+            React.createElement("div", { style: { fontSize: 11, color: "#4ade80" } }, l),
+            React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "#34d399" } }, v)
+          )
+        )
+      ),
+      React.createElement(Sec, null, "Daily Macro Targets"),
+      React.createElement(Crd, null,
+        React.createElement("div", { style: { textAlign: "center", marginBottom: 16 } },
+          React.createElement("span", { style: { fontSize: 32, fontWeight: 700, color: "#a78bfa" } }, "~2,000"),
+          React.createElement("span", { style: { fontSize: 14, color: "#888", marginLeft: 6 } }, "kcal / day")
+        ),
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-around" } },
+          macros.map(([l, v, p, c]) =>
+            React.createElement("div", { key: l, style: { textAlign: "center" } },
+              React.createElement("div", { style: { width: 48, height: 48, borderRadius: "50%", border: "3px solid " + c, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontSize: 11, fontWeight: 700, color: c, fontFamily: "Space Mono,monospace" } }, p + "%"),
+              React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "#ddd" } }, v),
+              React.createElement("div", { style: { fontSize: 10, color: "#666" } }, l)
+            )
+          )
+        ),
+        React.createElement("p", { style: { fontSize: 12, color: "#555", textAlign: "center", marginTop: 14 } }, "Moderate deficit from TDEE (~2,400 with gym). Lose ~0.5 kg/week while building muscle.")
+      ),
+      React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a2e,#0a1628)", border: "#2a1a4e" },
+        React.createElement("p", { style: { fontSize: 14, color: "#c4b5fd", fontWeight: 600, marginBottom: 8 } }, "The Reels You Saved Are Mostly Right"),
+        React.createElement("p", { style: { fontSize: 13, color: "#888", lineHeight: 1.6 } }, "High protein + calorie deficit + lifting + walking = proven formula. I've expanded beyond Indian staples with Western, Asian & Tex-Mex options. The sodium/water manipulation plan you saved is for short-term aesthetics — skip that and focus on real fat loss first.")
+      )
     )
   );
 }
 
-/* ── GYM PLAN ── */
+function MetricsPanel({ metricsData, setMetricsData }) {
+  const sortedData = [...metricsData].sort((a, b) => a.date.localeCompare(b.date));
+  const hasMetrics = sortedData.length > 0;
+  const current = hasMetrics ? sortedData[sortedData.length - 1] : null;
+  const previous = sortedData.length > 1 ? sortedData[sortedData.length - 2] : current;
+
+  function deleteEntry(date) {
+    setMetricsData((prev) => prev.filter((item) => item.date !== date));
+  }
+
+  return React.createElement('div', null,
+    hasMetrics
+      ? React.createElement(Crd, { bg: 'linear-gradient(135deg,#10131f,#151025)', border: '#24223b' },
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12 } },
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#ddd' } }, 'Metrics'),
+              React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 4 } }, `${fmtFullDate(previous.date)} → ${fmtFullDate(current.date)}`)
+            ),
+            React.createElement('div', { style: { fontSize: 11, color: '#8b7cff', fontFamily: 'Space Mono,monospace' } }, `${sortedData.length} entries`)
+          ),
+          React.createElement(MetricsChart, { data: sortedData })
+        )
+      : React.createElement(Crd, { bg: 'linear-gradient(135deg,#10131f,#151025)', border: '#24223b' },
+          React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#ddd', marginBottom: 8 } }, 'Metrics'),
+          React.createElement('div', { style: { fontSize: 12, color: '#777', lineHeight: 1.6 } }, 'There are no metric entries yet. Add a dataset below to start generating charts, comparisons, and summary values.')
+        ),
+    hasMetrics && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 } },
+      metricMeta.map((meta) => {
+        const delta = changeLabel(meta, current[meta.key], previous[meta.key]);
+        return React.createElement(Crd, { key: meta.key },
+          React.createElement('div', { style: { fontSize: 11, color: '#666' } }, meta.label),
+          React.createElement('div', { style: { fontSize: 22, fontWeight: 700, color: meta.color, marginTop: 2 } }, formatValue(meta, current[meta.key])),
+          React.createElement('div', { style: { fontSize: 11, color: '#555', marginTop: 3 } }, meta.sub(current[meta.key], current)),
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 8, alignItems: 'end' } },
+            React.createElement('div', { style: { fontSize: 10, color: '#666', lineHeight: 1.45 } },
+              React.createElement('div', null, `Prev: ${formatValue(meta, previous[meta.key])}`),
+              React.createElement('div', null, `Now: ${formatValue(meta, current[meta.key])}`)
+            ),
+            React.createElement('div', { style: { fontSize: 10, color: delta.color, textAlign: 'right', lineHeight: 1.35, fontFamily: 'Space Mono,monospace' } }, delta.text)
+          )
+        );
+      })
+    ),
+    React.createElement(DatasetTable, { rows: [...sortedData].sort((a, b) => b.date.localeCompare(a.date)), onDelete: deleteEntry }),
+    React.createElement(AddMetricCard, { metricsData: sortedData, setMetricsData })
+  );
+}
+
+function DatasetTable({ rows, onDelete }) {
+  return React.createElement(Crd, { style: { marginTop: 12, overflow: 'hidden' } },
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 } },
+      React.createElement('div', null,
+        React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#ddd' } }, 'Dataset table'),
+        React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 4 } }, 'Delete any wrong row here and all metrics update automatically')
+      ),
+      React.createElement('div', { style: { fontSize: 11, color: '#8b7cff', fontFamily: 'Space Mono,monospace' } }, `${rows.length} rows`)
+    ),
+    rows.length === 0
+      ? React.createElement('div', { style: { fontSize: 12, color: '#777', lineHeight: 1.6 } }, 'No datasets added yet.')
+      : React.createElement('div', { style: { overflowX: 'auto', marginInline: -4, paddingBottom: 4 } },
+          React.createElement('table', { style: { minWidth: 760, width: '100%' } },
+            React.createElement('thead', null,
+              React.createElement('tr', { style: { borderBottom: '1px solid #1a1a1a' } },
+                ['Date', 'Weight', 'Body Fat', 'Lean Mass', 'Muscle Mass', 'BMI', 'BMR', 'Action'].map((head) =>
+                  React.createElement('th', {
+                    key: head,
+                    style: { textAlign: head === 'Action' ? 'right' : 'left', padding: '10px 8px', fontSize: 11, color: '#666', fontFamily: 'Space Mono,monospace', fontWeight: 400, whiteSpace: 'nowrap' }
+                  }, head)
+                )
+              )
+            ),
+            React.createElement('tbody', null,
+              rows.map((row) => React.createElement('tr', { key: row.date, style: { borderBottom: '1px solid #141414' } },
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#ddd', whiteSpace: 'nowrap' } }, fmtFullDate(row.date)),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, `${row.weight.toFixed(1)} kg`),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, `${row.bodyFat.toFixed(1)}%`),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, `${row.leanMass.toFixed(1)} kg`),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, `${row.muscleMass.toFixed(1)} kg`),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, row.bmi.toFixed(1)),
+                React.createElement('td', { style: { padding: '12px 8px', fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' } }, Math.round(row.bmr).toLocaleString()),
+                React.createElement('td', { style: { padding: '12px 8px', textAlign: 'right' } },
+                  React.createElement('button', {
+                    onClick: () => onDelete(row.date),
+                    style: {
+                      padding: '7px 12px',
+                      borderRadius: 999,
+                      border: '1px solid #3a1f25',
+                      background: '#1a0d11',
+                      color: '#f87171',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.8,
+                      minHeight: 36
+                    }
+                  }, 'Delete')
+                )
+              ))
+            )
+          )
+        )
+  );
+}
+
+function MetricsChart({ data }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const [selected, setSelected] = useState('weight');
+  const activeMeta = metricMeta.find((m) => m.key === selected);
+
+  useEffect(() => {
+    if (!canvasRef.current || !data.length) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const baseDate = data[0].date;
+    const points = data.map((d) => ({ x: weekIndex(d.date, baseDate), y: d[selected], date: d.date }));
+    const maxWeek = points[points.length - 1].x;
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: activeMeta.label,
+          data: points,
+          parsing: false,
+          borderColor: activeMeta.color,
+          backgroundColor: activeMeta.color + '22',
+          fill: true,
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 5,
+          pointBackgroundColor: activeMeta.color,
+          pointBorderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#101010',
+            borderColor: '#2a2a2a',
+            borderWidth: 1,
+            titleColor: '#f5f5f5',
+            bodyColor: '#bdbdbd',
+            callbacks: {
+              title: (items) => items.length ? fmtFullDate(points[items[0].dataIndex].date) : '',
+              label: (ctx) => `${activeMeta.label}: ${formatValue(activeMeta, ctx.raw.y)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: 0,
+            max: Math.max(maxWeek, 1),
+            ticks: {
+              stepSize: 1,
+              color: '#666',
+              font: { family: 'Space Mono' },
+              callback: (value) => monthTickLabel(value, points)
+            },
+            grid: { color: '#161616' }
+          },
+          y: {
+            ticks: { color: '#666' },
+            grid: { color: '#161616' }
+          }
+        }
+      }
+    });
+    return () => chartRef.current && chartRef.current.destroy();
+  }, [data, selected]);
+
+  return React.createElement('div', null,
+    React.createElement('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } },
+      metricMeta.map((meta) => React.createElement('button', {
+        key: meta.key,
+        onClick: () => setSelected(meta.key),
+        style: {
+          padding: '6px 10px',
+          borderRadius: 999,
+          fontSize: 11,
+          border: selected === meta.key ? `1px solid ${meta.color}` : '1px solid #262626',
+          color: selected === meta.key ? meta.color : '#777',
+          background: selected === meta.key ? meta.color + '18' : '#111'
+        }
+      }, meta.label))
+    ),
+    React.createElement('div', { style: { fontSize: 11, color: '#666', marginBottom: 10, lineHeight: 1.5 } }, 'The trend line is positioned week by week, while the x-axis labels display the month at each recorded weekly entry.'),
+    React.createElement('div', { style: { height: 240 } },
+      React.createElement('canvas', { ref: canvasRef })
+    )
+  );
+}
+
+function AddMetricCard({ metricsData, setMetricsData }) {
+  const latest = metricsData[metricsData.length - 1] || {
+    weight: 0,
+    bodyFat: 0,
+    leanMass: 0,
+    muscleMass: 0,
+    bmi: 0,
+    bmr: 0
+  };
+  const [open, setOpen] = useState(metricsData.length === 0);
+  const [form, setForm] = useState({
+    date: '',
+    weight: latest.weight ? latest.weight.toFixed(1) : '',
+    bodyFat: latest.bodyFat ? latest.bodyFat.toFixed(1) : '',
+    leanMass: latest.leanMass ? latest.leanMass.toFixed(1) : '',
+    muscleMass: latest.muscleMass ? latest.muscleMass.toFixed(1) : '',
+    bmi: latest.bmi ? latest.bmi.toFixed(1) : '',
+    bmr: latest.bmr ? String(latest.bmr) : ''
+  });
+
+  useEffect(() => {
+    if (metricsData.length === 0) setOpen(true);
+  }, [metricsData.length]);
+
+  function updateField(key, value) { setForm((prev) => ({ ...prev, [key]: value })); }
+  function handleSave() {
+    if (!form.date) return;
+    const entry = {
+      date: form.date,
+      weight: parseFloat(form.weight),
+      bodyFat: parseFloat(form.bodyFat),
+      leanMass: parseFloat(form.leanMass),
+      muscleMass: parseFloat(form.muscleMass),
+      bmi: parseFloat(form.bmi),
+      bmr: parseFloat(form.bmr)
+    };
+    if ([entry.weight, entry.bodyFat, entry.leanMass, entry.muscleMass, entry.bmi, entry.bmr].some((v) => Number.isNaN(v))) return;
+    const filtered = metricsData.filter((item) => item.date !== entry.date);
+    setMetricsData([...filtered, entry].sort((a, b) => a.date.localeCompare(b.date)));
+    setOpen(false);
+    setForm({
+      date: '',
+      weight: entry.weight.toFixed(1),
+      bodyFat: entry.bodyFat.toFixed(1),
+      leanMass: entry.leanMass.toFixed(1),
+      muscleMass: entry.muscleMass.toFixed(1),
+      bmi: entry.bmi.toFixed(1),
+      bmr: String(Math.round(entry.bmr))
+    });
+  }
+
+  const fields = [
+    ['date', 'Date', 'date'],
+    ['weight', 'Weight', 'number'],
+    ['bodyFat', 'Body Fat', 'number'],
+    ['leanMass', 'Lean Mass', 'number'],
+    ['muscleMass', 'Muscle Mass', 'number'],
+    ['bmi', 'BMI', 'number'],
+    ['bmr', 'BMR', 'number'],
+  ];
+
+  return React.createElement(Crd, { bg: open ? 'linear-gradient(135deg,#15111f,#0f1320)' : '#111', border: open ? '#33285b' : '#1a1a1a', style: { marginTop: 12 } },
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open ? 14 : 0 } },
+      React.createElement('div', null,
+        React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#ddd' } }, 'Add new data'),
+        React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 4 } }, 'Store a new body scan entry in the same overview format')
+      ),
+      open
+        ? React.createElement('button', { onClick: handleSave, style: { color: '#a78bfa', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Space Mono,monospace', fontWeight: 700 } }, 'Done')
+        : React.createElement('button', { onClick: () => setOpen(true), style: { color: '#a78bfa', fontSize: 24, lineHeight: 1 } }, '+')
+    ),
+    open && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
+      fields.map(([key, label, type]) => React.createElement('label', { key, style: { display: 'block' } },
+        React.createElement('div', { style: { fontSize: 11, color: '#777', marginBottom: 6 } }, label),
+        React.createElement('input', {
+          type,
+          value: form[key],
+          onChange: (e) => updateField(key, e.target.value),
+          step: type === 'number' ? '0.1' : undefined,
+          style: {
+            width: '100%',
+            background: '#0d0d12',
+            border: '1px solid #232333',
+            borderRadius: 10,
+            padding: '12px 12px',
+            color: '#ededed',
+            fontSize: 13,
+            outline: 'none'
+          }
+        })
+      ))
+    )
+  );
+}
+
 function GymPlan() {
   const [open, setOpen] = useState(null);
   return React.createElement("div", null,
     React.createElement(Sec, null, "Push / Pull / Legs + Cardio — 6+1"),
     React.createElement("p", { style: { fontSize: 13, color: "#777", marginBottom: 16, lineHeight: 1.6 } }, "5 days lifting, 1 day visceral-fat cardio (Dr. Kim protocol), 1 full rest. Heavy compound first each session. Rest 60–90s. Log weights — add 2.5 kg every 2 weeks on compounds."),
-
     React.createElement("div", { style: { display: "flex", justifyContent: "space-around", background: "#111", borderRadius: 10, padding: "12px 8px", border: "1px solid #1e1e1e", marginBottom: 16 } },
       [["Duration", "60–75 min"], ["Steps", "10k/day"], ["Rest", "60–90s"]].map(([l, v]) =>
         React.createElement("div", { key: l, style: { textAlign: "center" } },
@@ -331,7 +637,6 @@ function GymPlan() {
         )
       )
     ),
-
     workoutPlan.map((d, i) =>
       React.createElement("div", { key: i, style: { background: "#111", borderRadius: 12, border: open === i ? "1px solid " + d.color + "33" : "1px solid #1a1a1a", marginBottom: 8, overflow: "hidden", transition: "border-color .2s" } },
         React.createElement("button", { onClick: () => setOpen(open === i ? null : i), style: { width: "100%", padding: "14px 16px", color: "#e8e8e8", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
@@ -354,33 +659,24 @@ function GymPlan() {
         )
       )
     ),
-
     React.createElement(Crd, { bg: "#0d1117", border: "#1e2a3a", style: { marginTop: 16 } },
       React.createElement("p", { style: { fontSize: 13, fontWeight: 600, color: "#60a5fa", marginBottom: 8 } }, "Progressive Overload"),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Compounds: "), "Add 2.5 kg when you hit top rep range for all sets."),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Isolation: "), "Mind-muscle connection first. Increase weight only when form is perfect.")
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Compounds: "), "Add 2.5 kg when you hit top rep range for all sets."),
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Isolation: "), "Mind-muscle connection first. Increase weight only when form is perfect.")
     ),
-
     React.createElement(Crd, { style: { marginTop: 8 } },
       React.createElement("p", { style: { fontSize: 13, fontWeight: 600, color: "#34d399", marginBottom: 8 } }, "Daily Steps: 8,000–10,000"),
       React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } }, "5-min walk every 90 min at desk. 20-min walk after dinner. This alone burns 300–400 extra kcal/day.")
     ),
-
     React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a0a,#1a1005)", border: "#3a2010", style: { marginTop: 8 } },
       React.createElement("p", { style: { fontSize: 13, fontWeight: 600, color: "#fb923c", marginBottom: 8 } }, "Why Dedicated Cardio Day (Dr. Kim)"),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Option A — Cycling 45 min: "), "Conversational pace. Proven to drastically cut visceral fat even twice/week."),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Option B — HIIT 25 min: "), "30s sprint / 60s rest × 10. HR at 70–80% max. Most effective for rapid visceral fat loss."),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Key: "), "Effects are dose-dependent. Start with A, graduate to B. Best exercise = one you do consistently.")
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Option A — Cycling 45 min: "), "Conversational pace. Proven to drastically cut visceral fat even twice/week."),
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Option B — HIIT 25 min: "), "30s sprint / 60s rest × 10. HR at 70–80% max. Most effective for rapid visceral fat loss."),
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Key: "), "Effects are dose-dependent. Start with A, graduate to B. Best exercise = one you do consistently.")
     )
   );
 }
 
-/* ── DIET PLAN ── */
 function MealCard({ slot }) {
   const [opt, setOpt] = useState(0);
   const cur = slot.options[opt];
@@ -395,9 +691,7 @@ function MealCard({ slot }) {
         }, o.label)
       )
     ),
-    cur.items.map((item, j) =>
-      React.createElement("div", { key: j, style: { fontSize: 13, color: "#bbb", padding: "3px 0 3px 12px", borderLeft: "2px solid #2a2a2a", marginBottom: 4 } }, item)
-    ),
+    cur.items.map((item, j) => React.createElement("div", { key: j, style: { fontSize: 13, color: "#bbb", padding: "3px 0 3px 12px", borderLeft: "2px solid #2a2a2a", marginBottom: 4 } }, item)),
     cur.note && React.createElement("p", { style: { fontSize: 11, color: "#555", marginTop: 8, fontStyle: "italic" } }, cur.note)
   );
 }
@@ -406,23 +700,16 @@ function DietPlan() {
   return React.createElement("div", null,
     React.createElement(Sec, null, "Daily Meals — 4 Options Each"),
     React.createElement("p", { style: { fontSize: 13, color: "#777", marginBottom: 16, lineHeight: 1.6 } }, "Pick one option per meal and stick with it 4–6 weeks. Consistency beats variety. Mix cuisines across meals — just hit the macro targets."),
-    mealSlots.map((slot, i) => React.createElement(MealCard, { key: i, slot: slot })),
-
+    mealSlots.map((slot, i) => React.createElement(MealCard, { key: i, slot })),
     React.createElement(Sec, null, "What to Cut Immediately"),
     React.createElement(Crd, { bg: "#1a0a0a", border: "#2a1a1a" },
-      [
-        ["Chai + Parle-G biscuits", "~0g protein, spikes blood sugar. Replace with eggs/oats + green tea"],
-        ["Kawan Frozen Rotis", "Palm oil + preservatives = inflammation. Use homemade wheat roti"],
-        ["12:20 AM dinner", "Shift to 8:00 PM. Late eating tanks sleep quality and stores more fat"],
-        ["Sugary drinks / juice", "Water, black coffee, green tea, buttermilk only"],
-      ].map(([item, reason], j) =>
+      [["Chai + Parle-G biscuits", "~0g protein, spikes blood sugar. Replace with eggs/oats + green tea"], ["Kawan Frozen Rotis", "Palm oil + preservatives = inflammation. Use homemade wheat roti"], ["12:20 AM dinner", "Shift to 8:00 PM. Late eating tanks sleep quality and stores more fat"], ["Sugary drinks / juice", "Water, black coffee, green tea, buttermilk only"]].map(([item, reason], j) =>
         React.createElement("div", { key: j, style: { padding: "8px 0", borderBottom: j < 3 ? "1px solid #1e1212" : "none" } },
           React.createElement("span", { style: { fontSize: 13, fontWeight: 500, color: "#f87171" } }, "✕ " + item),
           React.createElement("p", { style: { fontSize: 11, color: "#777", marginTop: 4 } }, reason)
         )
       )
     ),
-
     React.createElement(Sec, null, "Weekly Grocery List"),
     React.createElement(Crd, null,
       React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 } },
@@ -431,25 +718,19 @@ function DietPlan() {
         )
       )
     ),
-
     React.createElement(Crd, { style: { marginTop: 8 } },
       React.createElement("p", { style: { fontSize: 13, fontWeight: 600, color: "#fbbf24", marginBottom: 8 } }, "Hydration: 3–3.5L Water Daily"),
       React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } }, "Your body water (54.3%) and ECW ratio (36.9%) suggest retention from sodium. More water + less processed food = leaner face & waist in 2 weeks.")
     ),
-
     React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a0a,#1a1005)", border: "#3a2010", style: { marginTop: 8 } },
       React.createElement("p", { style: { fontSize: 13, fontWeight: 600, color: "#fb923c", marginBottom: 8 } }, "Visceral Fat Protocol (Dr. Kim)"),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Carotenoids: "), "2+ servings of carrots, bell peppers, or spinach daily. Every sabzi/salad should include one."),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Green tea 2×/day: "), "6:40 AM pre-workout + 5 PM snack. Matcha/sencha for ~600mg catechins."),
-      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } },
-        React.createElement("strong", { style: { color: "#aaa" } }, "Replace chai: "), "Green tea still has caffeine but delivers fat-fighting catechins instead of sugar + milk calories.")
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Carotenoids: "), "2+ servings of carrots, bell peppers, or spinach daily. Every sabzi/salad should include one."),
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Green tea 2×/day: "), "6:40 AM pre-workout + 5 PM snack. Matcha/sencha for ~600mg catechins."),
+      React.createElement("p", { style: { fontSize: 12, color: "#888", lineHeight: 1.6 } }, React.createElement("strong", { style: { color: "#aaa" } }, "Replace chai: "), "Green tea still has caffeine but delivers fat-fighting catechins instead of sugar + milk calories.")
     )
   );
 }
 
-/* ── SCHEDULE ── */
 function ScheduleTab() {
   const rules = [
     "No phone in bed — charge it across the room. Blue light after 9 PM kills melatonin.",
@@ -469,40 +750,27 @@ function ScheduleTab() {
     ["Month 2–3", "Visible recomp. Arms & shoulders fill out. Waist shrinks. Visceral fat dropping."],
     ["Month 4–6", "Major transformation. Body fat nearing 18–20%. Ab outline starts showing."],
   ];
-
   return React.createElement("div", null,
     React.createElement(Sec, null, "Your Daily Schedule — 6:30 AM Start"),
     React.createElement("p", { style: { fontSize: 13, color: "#777", marginBottom: 16, lineHeight: 1.6 } }, "No transition period. Commit from Day 1. Set alarm, phone across the room. It'll be rough for 4–5 days then your body locks in. The gym habit anchors everything."),
-
     React.createElement(Crd, null,
-      schedule.map((s, i) =>
-        React.createElement("div", { key: i, style: { display: "flex", alignItems: "flex-start", padding: "10px 0", borderBottom: i < schedule.length - 1 ? "1px solid #141414" : "none" } },
-          React.createElement("span", { style: { fontSize: 20, marginRight: 12 } }, s.icon),
-          React.createElement("div", { style: { flex: 1 } },
-            React.createElement("div", { style: { fontFamily: "Space Mono,monospace", fontSize: 11, color: "#a78bfa", marginBottom: 2 } }, s.time),
-            React.createElement("div", { style: { fontSize: 13, color: "#ccc" } }, s.act)
-          )
+      schedule.map((s, i) => React.createElement("div", { key: i, style: { display: "flex", alignItems: "flex-start", padding: "10px 0", borderBottom: i < schedule.length - 1 ? "1px solid #141414" : "none" } },
+        React.createElement("span", { style: { fontSize: 20, marginRight: 12 } }, s.icon),
+        React.createElement("div", { style: { flex: 1 } },
+          React.createElement("div", { style: { fontFamily: "Space Mono,monospace", fontSize: 11, color: "#a78bfa", marginBottom: 2 } }, s.time),
+          React.createElement("div", { style: { fontSize: 13, color: "#ccc" } }, s.act)
         )
-      )
+      ))
     ),
-
     React.createElement(Sec, null, "Non-Negotiable Rules"),
     React.createElement(Crd, { bg: "linear-gradient(135deg,#1a0a2e,#0a1628)", border: "#2a1a4e" },
-      rules.map((rule, i) =>
-        React.createElement("div", { key: i, style: { fontSize: 13, color: "#c4b5fd", padding: "8px 0", borderBottom: i < 9 ? "1px solid #2a1a3e" : "none", lineHeight: 1.5 } },
-          React.createElement("span", { style: { color: "#a78bfa", fontWeight: 700, marginRight: 8 } }, (i + 1) + "."),
-          rule
-        )
-      )
+      rules.map((rule, i) => React.createElement("div", { key: i, style: { fontSize: 13, color: "#c4b5fd", padding: "8px 0", borderBottom: i < 9 ? "1px solid #2a1a3e" : "none", lineHeight: 1.5 } },
+        React.createElement("span", { style: { color: "#a78bfa", fontWeight: 700, marginRight: 8 } }, (i + 1) + "."), rule
+      ))
     ),
-
     React.createElement(Sec, null, "What to Expect"),
     React.createElement(Crd, null,
-      timeline.map(([t, d], i) =>
-        React.createElement("p", { key: i, style: { fontSize: 12, color: "#888", marginBottom: i < 3 ? 6 : 0, lineHeight: 1.6 } },
-          React.createElement("strong", { style: { color: "#aaa" } }, t + ": "), d
-        )
-      )
+      timeline.map(([t, d], i) => React.createElement("p", { key: i, style: { fontSize: 12, color: "#888", marginBottom: i < 3 ? 6 : 0, lineHeight: 1.6 } }, React.createElement("strong", { style: { color: "#aaa" } }, t + ": "), d))
     )
   );
 }
